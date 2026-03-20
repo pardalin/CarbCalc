@@ -1,4 +1,4 @@
-const CACHE = 'carbcalc-v2';
+const CACHE = 'carbcalc-v4';
 
 // Files to cache on install (app shell)
 const PRECACHE = [
