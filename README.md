@@ -2,6 +2,8 @@
 
 A mobile-friendly Progressive Web App for calculating carbohydrates in home-cooked meals. Designed for people with diabetes tracking carbs across recipes.
 
+Vibe coded with Claude Code / Sonnet 4.6
+
 ## Features
 
 - **Barcode scanner** — live camera scans barcodes and looks up carbs from Open Food Facts (3M+ products)
