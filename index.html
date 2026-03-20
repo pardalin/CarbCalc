@@ -338,16 +338,21 @@ async function startBarcodeScanner() {
   }
   try {
     scanStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
     });
     const video = document.getElementById('scanner-video');
     video.srcObject = scanStream;
+    await new Promise(r => { video.onloadedmetadata = r; });
+    await video.play();
+
     document.getElementById('scanner-overlay').classList.add('active');
     scanActive = true;
+
     const statusEl = document.getElementById('scanner-status');
     statusEl.textContent = 'Scanning…';
     statusEl.className = 'scanner-status';
 
+    // Build ZXing reader once
     if (!zxingReader) {
       const hints = new Map();
       hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
@@ -356,34 +361,67 @@ async function startBarcodeScanner() {
         ZXing.BarcodeFormat.CODE_128,
       ]);
       hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-      zxingReader = new ZXing.BrowserMultiFormatReader(hints);
+      zxingReader = new ZXing.MultiFormatReader();
+      zxingReader.setHints(hints);
     }
 
-    zxingReader.decodeFromVideoElement(video, async (result, err) => {
+    // Off-screen canvas for frame grabs
+    const canvas = document.createElement('canvas');
+    const ctx    = canvas.getContext('2d', { willReadFrequently: true });
+    let attempts = 0;
+
+    const tick = () => {
       if (!scanActive) return;
-      if (result) {
-        scanActive = false;
-        const code = result.getText();
-        statusEl.textContent = 'Found: ' + code;
-        statusEl.className = 'scanner-status found';
-        await new Promise(r => setTimeout(r, 600));
-        stopBarcodeScanner();
-        resetScanUI();
-        setStatus('loading', '<span class="spinner"></span> Looking up product…');
+
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+
         try {
-          const prod = await lookupOFF(code);
-          if (prod) {
-            setStatus('ok', '✓ Found in Open Food Facts');
-            showProductCard(prod);
-            showConfirm(prod.carbs, 'Open Food Facts');
-          } else {
-            setStatus('err', '⚠ Barcode ' + code + ' not in Open Food Facts — try scanning the nutrition label');
-          }
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const src    = new ZXing.RGBLuminanceSource(imageData.data, canvas.width, canvas.height);
+          const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
+          const result = zxingReader.decode(bitmap);
+
+          // Got a barcode!
+          scanActive = false;
+          const code = result.getText();
+          statusEl.textContent = 'Found: ' + code;
+          statusEl.className = 'scanner-status found';
+
+          setTimeout(async () => {
+            stopBarcodeScanner();
+            resetScanUI();
+            setStatus('loading', '<span class="spinner"></span> Looking up product…');
+            try {
+              const prod = await lookupOFF(code);
+              if (prod) {
+                setStatus('ok', '✓ Found in Open Food Facts');
+                showProductCard(prod);
+                showConfirm(prod.carbs, 'Open Food Facts');
+              } else {
+                setStatus('err', '⚠ Barcode ' + code + ' not in Open Food Facts — try scanning the nutrition label');
+              }
+            } catch(e) {
+              setStatus('err', '⚠ Network error — check connection or scan the nutrition label');
+            }
+          }, 600);
+          return; // don't schedule another tick
+
         } catch(e) {
-          setStatus('err', '⚠ Network error — check connection or scan the nutrition label');
+          // NotFoundException is normal — no barcode in this frame yet
+          attempts++;
+          if (attempts % 30 === 0) statusEl.textContent = 'Scanning… hold steady';
         }
       }
-    });
+
+      // ~15fps is plenty for barcode detection
+      setTimeout(tick, 66);
+    };
+
+    tick();
+
   } catch(e) {
     alert('Could not access camera: ' + e.message);
   }
