@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CarbCalc</title>
+<meta name="theme-color" content="#1a1410">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CarbCalc">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,300;9..144,600&display=swap');
+  :root {
+    --bg: #f5f0e8; --card: #fffdf8; --ink: #1a1410; --muted: #7a6e62;
+    --accent: #c8440a; --accent2: #2a6e3f; --border: #ddd5c8;
+    --mono: 'DM Mono', monospace; --serif: 'Fraunces', serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--mono); min-height: 100vh; padding: 0 0 80px 0; }
+  header { background: var(--ink); color: var(--bg); padding: 20px 20px 16px; position: sticky; top: 0; z-index: 100; }
+  header h1 { font-family: var(--serif); font-weight: 300; font-size: 1.6rem; letter-spacing: -0.02em; }
+  header span { color: var(--accent); font-weight: 600; }
+  .step-bar { display: flex; gap: 4px; margin-top: 10px; }
+  .step-dot { height: 3px; flex: 1; background: rgba(255,255,255,0.2); border-radius: 2px; transition: background 0.3s; }
+  .step-dot.active { background: var(--accent); }
+  .step-dot.done   { background: var(--accent2); }
+  .screen { display: none; padding: 20px; }
+  .screen.visible { display: block; }
+  .lbl { font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .card-title { font-family: var(--serif); font-size: 1.1rem; font-weight: 600; margin-bottom: 4px; }
+  .card-sub { font-size: 0.75rem; color: var(--muted); margin-bottom: 14px; }
+  .scan-row { display: flex; gap: 10px; margin-bottom: 0; }
+  .scan-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 18px 10px; border-radius: 12px; border: 2px dashed var(--border); background: transparent; cursor: pointer; font-family: var(--mono); transition: border-color 0.2s, background 0.2s; color: var(--ink); }
+  .scan-btn:hover { border-color: var(--accent); background: #fff8f5; }
+  .scan-btn .sb-icon { font-size: 1.8rem; }
+  .scan-btn .sb-title { font-size: 0.8rem; font-weight: 500; }
+  .scan-btn .sb-sub { font-size: 0.65rem; color: var(--muted); text-align: center; line-height: 1.4; }
+  #ocr-file-input { display: none; }
+  #scanner-overlay { display: none; position: fixed; inset: 0; background: #000; z-index: 999; flex-direction: column; align-items: center; justify-content: center; }
+  #scanner-overlay.active { display: flex; }
+  #scanner-video { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+  .scanner-ui { position: relative; z-index: 2; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+  .scanner-frame { width: 80vw; max-width: 340px; height: 120px; border: 2px solid rgba(200,68,10,0.9); border-radius: 10px; box-shadow: 0 0 0 2000px rgba(0,0,0,0.55); position: relative; overflow: hidden; }
+  .scanner-line { position: absolute; left: 6px; right: 6px; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); animation: sweep 1.8s ease-in-out infinite; top: 20%; }
+  @keyframes sweep { 0%,100% { top: 15%; } 50% { top: 80%; } }
+  .scanner-corners::before, .scanner-corners::after, .scanner-frame::before, .scanner-frame::after { content: ''; position: absolute; width: 18px; height: 18px; border-color: white; border-style: solid; }
+  .scanner-frame::before  { top:-1px;left:-1px;   border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
+  .scanner-frame::after   { top:-1px;right:-1px;  border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
+  .scanner-corners::before { bottom:-1px;left:-1px;  border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
+  .scanner-corners::after  { bottom:-1px;right:-1px; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
+  .scanner-label { margin-top: 24px; color: rgba(255,255,255,0.8); font-size: 0.78rem; letter-spacing: 0.06em; text-align: center; line-height: 1.6; }
+  .scanner-status { margin-top: 12px; background: rgba(0,0,0,0.6); border-radius: 20px; padding: 6px 16px; font-size: 0.72rem; color: rgba(255,255,255,0.7); min-width: 180px; text-align: center; }
+  .scanner-status.found { background: rgba(42,110,63,0.85); color: #fff; }
+  .scanner-close-btn { pointer-events: all; position: absolute; top: 52px; right: 20px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 50%; width: 40px; height: 40px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .status-pill { margin-top: 12px; padding: 9px 14px; border-radius: 8px; font-size: 0.78rem; display: none; line-height: 1.5; }
+  .status-pill.loading { background: #fff3cd; color: #7a5800; border: 1px solid #f5d78e; display: block; }
+  .status-pill.ok      { background: #d4edda; color: #155724; border: 1px solid #b8dfc5; display: block; }
+  .status-pill.err     { background: #fde8e8; color: #7a1111; border: 1px solid #f5b8b8; display: block; }
+  .product-card { display: none; margin-top: 12px; background: #edf7f0; border: 1px solid #b8dfc5; border-radius: 10px; padding: 14px; }
+  .pc-name  { font-family: var(--serif); font-size: 1rem; font-weight: 600; margin-bottom: 2px; }
+  .pc-brand { font-size: 0.7rem; color: var(--muted); margin-bottom: 8px; }
+  .pc-carbs { font-size: 0.82rem; }
+  .pc-carbs strong { color: var(--accent2); font-size: 1.05rem; }
+  .pc-bc    { font-size: 0.65rem; color: var(--muted); margin-top: 4px; }
+  #preview-img { width: 100%; border-radius: 8px; margin-top: 12px; display: none; max-height: 200px; object-fit: cover; }
+  .confirm-banner { display: none; margin-top: 12px; background: #fff8f0; border: 2px solid var(--accent); border-radius: 10px; padding: 14px; }
+  .confirm-banner .q { font-size: 0.82rem; margin-bottom: 10px; line-height: 1.6; }
+  .confirm-banner .q strong { color: var(--accent); font-size: 1rem; }
+  .confirm-row { display: flex; gap: 8px; }
+  .confirm-row button { flex: 1; padding: 9px; border: none; border-radius: 8px; font-family: var(--mono); font-size: 0.8rem; font-weight: 500; cursor: pointer; }
+  .btn-yes { background: var(--accent2); color: white; }
+  .btn-no  { background: var(--border); color: var(--ink); }
+  .debug-panel { margin-top: 12px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: none; }
+  .debug-toggle { width: 100%; background: #f0ebe0; border: none; padding: 9px 14px; font-family: var(--mono); font-size: 0.72rem; color: var(--muted); cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; }
+  .debug-toggle .arr { transition: transform 0.2s; }
+  .debug-toggle.open .arr { transform: rotate(180deg); }
+  .debug-body { display: none; background: #1a1410; padding: 12px 14px; }
+  .debug-body.vis { display: block; }
+  .dst { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: #7a6e62; margin-bottom: 6px; margin-top: 10px; }
+  .dst:first-child { margin-top: 0; }
+  .draw { font-family: var(--mono); font-size: 0.72rem; color: #d4c9b8; white-space: pre-wrap; word-break: break-word; line-height: 1.6; max-height: 200px; overflow-y: auto; background: #111; padding: 10px; border-radius: 6px; border: 1px solid #333; }
+  .dm  { font-size: 0.75rem; color: #a8d5a2; padding: 6px 10px; background: #1f2d1f; border-radius: 6px; border: 1px solid #2a6e3f44; margin-top: 4px; }
+  .dnm { font-size: 0.75rem; color: #f5b8b8; padding: 6px 10px; background: #2d1f1f; border-radius: 6px; border: 1px solid #7a111144; margin-top: 4px; }
+  .dw  { font-size: 0.75rem; color: #f5d78e; padding: 6px 10px; background: #2d2510; border-radius: 6px; border: 1px solid #f5d78e44; margin-top: 4px; }
+  .dc  { font-size: 0.72rem; color: #b8c8d5; margin-top: 6px; }
+  .copy-btn { float: right; background: #333; border: none; color: #aaa; font-family: var(--mono); font-size: 0.65rem; padding: 3px 8px; border-radius: 4px; cursor: pointer; margin-bottom: 4px; }
+  input[type="text"], input[type="number"] { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: var(--mono); font-size: 0.9rem; color: var(--ink); outline: none; transition: border-color 0.2s; margin-bottom: 10px; }
+  input:focus { border-color: var(--accent); }
+  .row { display: flex; gap: 10px; }
+  .row input { margin-bottom: 0; }
+  .row .col { flex: 1; }
+  .btn { display: block; width: 100%; padding: 13px; border: none; border-radius: 10px; font-family: var(--mono); font-size: 0.85rem; font-weight: 500; cursor: pointer; letter-spacing: 0.04em; transition: transform 0.1s; }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary   { background: var(--accent); color: white; }
+  .btn-secondary { background: var(--ink); color: var(--bg); }
+  .btn-ghost     { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .hint { font-size: 0.72rem; color: var(--muted); line-height: 1.5; margin-top: -4px; margin-bottom: 10px; }
+  .mt { margin-top: 14px; }
+  .ingredient-list { margin-bottom: 16px; }
+  .ingredient-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); animation: si 0.2s ease; }
+  @keyframes si { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+  .ing-name  { flex:1; font-size:0.85rem; }
+  .ing-carbs { font-size:0.75rem; color:var(--muted); }
+  .ing-total { font-weight:500; font-size:0.85rem; color:var(--accent); min-width:52px; text-align:right; }
+  .del-btn   { background:none; border:none; color:var(--border); cursor:pointer; font-size:1rem; padding:2px 4px; }
+  .del-btn:hover { color:var(--accent); }
+  .running-total { background:var(--ink); color:var(--bg); border-radius:10px; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .rt-val { font-family:var(--serif); font-size:1.8rem; font-weight:600; color:var(--accent); }
+  .rt-val span { font-family:var(--mono); font-size:0.75rem; color:var(--muted); display:block; }
+  .result-box { background:var(--accent2); color:white; border-radius:14px; padding:24px 20px; text-align:center; margin-bottom:16px; }
+  .rb-big   { font-family:var(--serif); font-size:3.5rem; font-weight:600; line-height:1; }
+  .rb-unit  { font-size:1rem; opacity:0.8; margin-top:4px; }
+  .rb-label { font-size:0.72rem; opacity:0.7; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px; }
+  .breakdown { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:14px; }
+  .bdr { display:flex; justify-content:space-between; font-size:0.8rem; padding:4px 0; border-bottom:1px solid var(--border); }
+  .bdr:last-child { border-bottom:none; }
+  .bdr .k { color:var(--muted); }
+  .nav-row { display:flex; gap:10px; margin-top:8px; }
+  .nav-row .btn { flex:1; }
+  .spinner { display:inline-block; width:13px; height:13px; border:2px solid rgba(0,0,0,0.15); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; margin-right:5px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Carb<span>Calc</span></h1>
+  <div class="step-bar">
+    <div class="step-dot" id="dot0"></div>
+    <div class="step-dot" id="dot1"></div>
+    <div class="step-dot" id="dot2"></div>
+  </div>
+</header>
+
+<div id="scanner-overlay">
+  <video id="scanner-video" autoplay playsinline muted></video>
+  <div class="scanner-ui">
+    <div class="scanner-frame">
+      <div class="scanner-corners"></div>
+      <div class="scanner-line"></div>
+    </div>
+    <div class="scanner-label">Point at the barcode<br>Hold steady — scans automatically</div>
+    <div class="scanner-status" id="scanner-status">Scanning…</div>
+    <button class="scanner-close-btn" id="scanner-close">✕</button>
+  </div>
+</div>
+
+<input type="file" id="ocr-file-input" accept="image/*" capture="environment">
+
+<div class="screen visible" id="screen-0">
+  <div class="card">
+    <div class="card-title">Add ingredient</div>
+    <div class="card-sub">Scan the barcode for instant lookup, or photograph the nutrition label</div>
+    <div class="scan-row">
+      <button class="scan-btn" id="barcode-btn">
+        <span class="sb-icon">▦</span>
+        <span class="sb-title">Scan barcode</span>
+        <span class="sb-sub">Live camera<br>fastest &amp; most reliable</span>
+      </button>
+      <button class="scan-btn" id="label-btn">
+        <span class="sb-icon">📷</span>
+        <span class="sb-title">Photo label</span>
+        <span class="sb-sub">Nutrition facts<br>OCR reads carbs</span>
+      </button>
+    </div>
+    <img id="preview-img" alt="Label preview">
+    <div class="status-pill" id="status-pill"></div>
+    <div class="product-card" id="product-card">
+      <div class="pc-name"  id="pc-name"></div>
+      <div class="pc-brand" id="pc-brand"></div>
+      <div class="pc-carbs" id="pc-carbs"></div>
+      <div class="pc-bc"    id="pc-bc"></div>
+    </div>
+    <div class="confirm-banner" id="confirm-banner">
+      <div class="q" id="confirm-q"></div>
+      <div class="confirm-row">
+        <button class="btn-yes" id="confirm-yes">✓ Yes, use this</button>
+        <button class="btn-no"  id="confirm-no">✗ No, I'll type it</button>
+      </div>
+    </div>
+    <div class="debug-panel" id="debug-panel">
+      <button class="debug-toggle" id="debug-toggle">
+        <span>🔍 OCR debug output</span><span class="arr">▾</span>
+      </button>
+      <div class="debug-body" id="debug-body">
+        <div class="dst">Raw OCR text</div>
+        <button class="copy-btn" id="copy-btn">copy</button>
+        <div class="draw" id="debug-raw"></div>
+        <div class="dst">Pattern match</div>
+        <div id="debug-match"></div>
+        <div class="dst">Value repair log</div>
+        <div id="debug-repair"></div>
+        <div class="dst">Confidence</div>
+        <div class="dc" id="debug-conf"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Ingredient details</div>
+    <div class="lbl">Name</div>
+    <input type="text" id="ing-name" placeholder="e.g. Pasta, tomato sauce…">
+    <div class="row">
+      <div class="col">
+        <div class="lbl">Carbs per 100g</div>
+        <input type="number" id="carbs-per-100" placeholder="e.g. 72" min="0" max="100" step="0.1">
+      </div>
+      <div class="col">
+        <div class="lbl">Amount used (g)</div>
+        <input type="number" id="grams-used" placeholder="e.g. 200" min="1" step="1">
+      </div>
+    </div>
+    <p class="hint">Value fills automatically — correct if needed.</p>
+    <button class="btn btn-primary mt" id="add-btn">+ Add to recipe</button>
+  </div>
+</div>
+
+<div class="screen" id="screen-1">
+  <div class="running-total">
+    <div><div class="lbl" style="color:#7a6e62;margin-bottom:2px">Total carbs so far</div></div>
+    <div class="rt-val" id="running-carbs">0 <span>grams</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Recipe ingredients</div>
+    <div class="ingredient-list" id="ingredient-list">
+      <p style="color:var(--muted);font-size:0.8rem;">No ingredients yet.</p>
+    </div>
+    <button class="btn btn-ghost" id="add-more-btn" style="margin-top:4px">+ Add another ingredient</button>
+  </div>
+  <div class="nav-row">
+    <button class="btn btn-secondary" id="to-portion-btn">Calculate portions →</button>
+  </div>
+</div>
+
+<div class="screen" id="screen-2">
+  <div class="card">
+    <div class="card-title">Final dish weight</div>
+    <div class="card-sub">Weigh the whole dish after cooking — water and meat change the weight</div>
+    <div class="lbl">Total dish weight (g)</div>
+    <input type="number" id="dish-weight" placeholder="e.g. 850" min="1" step="1">
+    <div class="lbl">One portion weight (g)</div>
+    <input type="number" id="portion-weight" placeholder="e.g. 280" min="1" step="1">
+    <button class="btn btn-primary mt" id="calc-btn">Calculate →</button>
+  </div>
+  <div id="result-area" style="display:none">
+    <div class="result-box">
+      <div class="rb-label">Carbs in your portion</div>
+      <div class="rb-big" id="result-num">—</div>
+      <div class="rb-unit">grams of carbohydrates</div>
+    </div>
+    <div class="breakdown" id="breakdown"></div>
+    <button class="btn btn-ghost" id="new-recipe-btn">Start new recipe</button>
+  </div>
+  <div class="nav-row">
+    <button class="btn btn-ghost" id="back-btn">← Back to recipe</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+let ingredients = [];
+let ocrWorker   = null;
+let zxingReader = null;
+let scanStream  = null;
+let scanActive  = false;
+
+function showScreen(n) {
+  document.querySelectorAll('.screen').forEach((s,i) => s.classList.toggle('visible', i===n));
+  document.querySelectorAll('.step-dot').forEach((d,i) => {
+    d.classList.toggle('active', i===n);
+    d.classList.toggle('done',   i<n);
+  });
+  window.scrollTo(0,0);
+}
+
+function setStatus(state, html) {
+  const el = document.getElementById('status-pill');
+  el.className = 'status-pill ' + state;
+  el.innerHTML = html;
+}
+
+function showConfirm(value, source) {
+  const b = document.getElementById('confirm-banner');
+  document.getElementById('confirm-q').innerHTML =
+    source + ' found <strong>' + value + 'g carbs / 100g</strong>. Does that look right?';
+  b.style.display = 'block';
+  document.getElementById('confirm-yes').onclick = () => {
+    document.getElementById('carbs-per-100').value = value;
+    b.style.display = 'none';
+  };
+  document.getElementById('confirm-no').onclick = () => {
+    document.getElementById('carbs-per-100').value = '';
+    document.getElementById('carbs-per-100').focus();
+    b.style.display = 'none';
+  };
+}
+
+function resetScanUI() {
+  document.getElementById('status-pill').className  = 'status-pill';
+  document.getElementById('product-card').style.display   = 'none';
+  document.getElementById('confirm-banner').style.display = 'none';
+  document.getElementById('debug-panel').style.display    = 'none';
+  document.getElementById('preview-img').style.display    = 'none';
+}
+
+async function lookupOFF(barcode) {
+  const resp = await fetch('https://world.openfoodfacts.org/api/v0/product/' + barcode + '.json');
+  const data = await resp.json();
+  if (data.status !== 1 || !data.product) return null;
+  const p = data.product;
+  const carbs = p.nutriments && p.nutriments['carbohydrates_100g'];
+  if (carbs == null) return null;
+  return {
+    name:   p.product_name || p.product_name_en || 'Unknown product',
+    brand:  p.brands || '',
+    carbs:  Math.round(carbs * 10) / 10,
+    barcode: barcode
+  };
+}
+
+function showProductCard(prod) {
+  document.getElementById('pc-name').textContent  = prod.name;
+  document.getElementById('pc-brand').textContent = prod.brand;
+  document.getElementById('pc-carbs').innerHTML   = 'Carbs per 100g: <strong>' + prod.carbs + 'g</strong>';
+  document.getElementById('pc-bc').textContent    = 'Barcode: ' + prod.barcode;
+  document.getElementById('product-card').style.display = 'block';
+  if (!document.getElementById('ing-name').value)
+    document.getElementById('ing-name').value = prod.name;
+}
+
+async function startBarcodeScanner() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Live camera not available here.\n\nTo use barcode scanning, open this app over HTTPS (e.g. GitHub Pages or Netlify).\n\nUse "Photo label" with OCR for now.');
+    return;
+  }
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    const video = document.getElementById('scanner-video');
+    video.srcObject = scanStream;
+    document.getElementById('scanner-overlay').classList.add('active');
+    scanActive = true;
+    const statusEl = document.getElementById('scanner-status');
+    statusEl.textContent = 'Scanning…';
+    statusEl.className = 'scanner-status';
+
+    if (!zxingReader) {
+      const hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+        ZXing.BarcodeFormat.UPC_A,  ZXing.BarcodeFormat.UPC_E,
+        ZXing.BarcodeFormat.CODE_128,
+      ]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+      zxingReader = new ZXing.BrowserMultiFormatReader(hints);
+    }
+
+    zxingReader.decodeFromVideoElement(video, async (result, err) => {
+      if (!scanActive) return;
+      if (result) {
+        scanActive = false;
+        const code = result.getText();
+        statusEl.textContent = 'Found: ' + code;
+        statusEl.className = 'scanner-status found';
+        await new Promise(r => setTimeout(r, 600));
+        stopBarcodeScanner();
+        resetScanUI();
+        setStatus('loading', '<span class="spinner"></span> Looking up product…');
+        try {
+          const prod = await lookupOFF(code);
+          if (prod) {
+            setStatus('ok', '✓ Found in Open Food Facts');
+            showProductCard(prod);
+            showConfirm(prod.carbs, 'Open Food Facts');
+          } else {
+            setStatus('err', '⚠ Barcode ' + code + ' not in Open Food Facts — try scanning the nutrition label');
+          }
+        } catch(e) {
+          setStatus('err', '⚠ Network error — check connection or scan the nutrition label');
+        }
+      }
+    });
+  } catch(e) {
+    alert('Could not access camera: ' + e.message);
+  }
+}
+
+function stopBarcodeScanner() {
+  scanActive = false;
+  document.getElementById('scanner-overlay').classList.remove('active');
+  if (zxingReader) zxingReader.reset();
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+}
+
+document.getElementById('scanner-close').addEventListener('click', stopBarcodeScanner);
+document.getElementById('barcode-btn').addEventListener('click', () => { resetScanUI(); startBarcodeScanner(); });
+document.getElementById('label-btn').addEventListener('click', () => { resetScanUI(); document.getElementById('ocr-file-input').click(); });
+
+async function initOCR() {
+  if (ocrWorker) return;
+  ocrWorker = await Tesseract.createWorker('eng');
+}
+
+function repairValue(raw) {
+  const log = [];
+  if (raw <= 100) return { value: raw, log: ['In range — no repair needed.'] };
+  log.push('Raw ' + raw + ' > 100, attempting repair.');
+  const s = String(Math.round(raw));
+  if (s.length === 3) {
+    const d = parseFloat(s[0]+'.'+s[1]);
+    if (d <= 100) { log.push('3-digit → ' + s[0] + '.' + s[1] + ' = ' + d + ' ✓'); return { value: d, log }; }
+    const t = parseInt(s.slice(0,2));
+    if (t <= 100) { log.push('3-digit → first two = ' + t + ' ✓'); return { value: t, log }; }
+  }
+  if (s.length === 4) {
+    const d = parseFloat(s.slice(0,2)+'.'+s[2]);
+    if (d <= 100) { log.push('4-digit → ' + s.slice(0,2) + '.' + s[2] + ' = ' + d + ' ✓'); return { value: d, log }; }
+    const t = parseInt(s.slice(0,2));
+    if (t <= 100) { log.push('4-digit → first two = ' + t + ' ✓'); return { value: t, log }; }
+  }
+  log.push('Could not repair.');
+  return { value: null, log };
+}
+
+const PATTERNS = [
+  { label: 'Kolhydrat/Hiilihydraatit (bilingual)', re: /kolhydrater?\s*[\/|]\s*hiilihydraatit\s*[:\-]?\s*(\d+[\.,]\d+|\d+)\s*g?/i },
+  { label: 'Hiilihydraatit/Kolhydrat (bilingual)', re: /hiilihydraatit\s*[\/|]\s*kolhydrater?\s*[:\-]?\s*(\d+[\.,]\d+|\d+)\s*g?/i },
+  { label: 'hiilihydraatit (FI)',                  re: /hiilihydraatit\s*[:\-]?\s*(\d+[\.,]\d+|\d+)\s*g?/i },
+  { label: 'kolhydrater/kolhydrat (SV)',            re: /kolhydrater?\s*[:\-]?\s*(\d+[\.,]\d+|\d+)\s*g?/i },
+  { label: 'carbohydrates (EN)',                   re: /carbohydrate[s]?\s*[:\-]?\s*(\d+[\.,]\d+|\d+)\s*g?/i },
+  { label: 'total carbs (EN)',                     re: /total\s*carb[s]?\s*[:\-]?\s*(\d+[\.,]\d+|\d+)\s*g?/i },
+  { label: 'kohlenhydrate (DE)',                   re: /kohlenhydrate\s*[:\-]?\s*(\d+[\.,]\d+|\d+)\s*g?/i },
+  { label: 'glucides (FR)',                        re: /glucides?\s*[:\-]?\s*(\d+[\.,]\d+|\d+)\s*g?/i },
+  { label: 'carboidrati (IT)',                     re: /carboidrati\s*[:\-]?\s*(\d+[\.,]\d+|\d+)\s*g?/i },
+  { label: 'hidratos de carbono (ES)',             re: /hidratos\s*de\s*carbono\s*[:\-]?\s*(\d+[\.,]\d+|\d+)\s*g?/i },
+  { label: 'karbohydrater (NO/DA)',                re: /karbohydrater?\s*[:\-]?\s*(\d+[\.,]\d+|\d+)\s*g?/i },
+];
+
+function extractCarbs(text) {
+  const n = text.replace(/\n/g,' ').replace(/\s+/g,' ');
+  for (const p of PATTERNS) {
+    const m = n.match(p.re);
+    if (m) return { raw: parseFloat(m[1].replace(',','.')), matchedBy: p.label, matched: m[0] };
+  }
+  const idx = n.search(/carb|hiilih|kolhyd|kohlenh|glucid|carboid|hidrato|karbohy/i);
+  if (idx !== -1) {
+    const nearby = n.slice(Math.max(0,idx-10), idx+80);
+    const nm = nearby.match(/(\d+[\.,]\d+|\d+)/);
+    if (nm) return { raw: parseFloat(nm[1].replace(',','.')), matchedBy: 'proximity fallback', matched: nearby.trim() };
+  }
+  return null;
+}
+
+function showDebug(rawText, matchResult, repairedValue, repairLog, confidence) {
+  const panel  = document.getElementById('debug-panel');
+  const body   = document.getElementById('debug-body');
+  const toggle = document.getElementById('debug-toggle');
+  panel.style.display = 'block';
+  document.getElementById('debug-raw').textContent  = rawText || '(empty)';
+  document.getElementById('debug-conf').textContent = confidence != null ? 'avg confidence: ' + confidence.toFixed(1) + '%' : '—';
+  document.getElementById('debug-match').innerHTML = matchResult
+    ? '<div class="dm">✓ <strong>' + matchResult.matchedBy + '</strong><br><code>' + matchResult.matched + '</code> → raw: <strong>' + matchResult.raw + '</strong></div>'
+    : '<div class="dnm">✗ No pattern matched.</div>';
+  const re = document.getElementById('debug-repair');
+  if (repairLog && repairLog.length) {
+    const allOk = repairLog.length===1 && repairLog[0].includes('no repair');
+    re.innerHTML = repairLog.map(function(l){ return '<div class="' + (allOk?'dm':'dw') + '">' + l + '</div>'; }).join('');
+    if (repairedValue !== null && repairedValue !== (matchResult && matchResult.raw))
+      re.innerHTML += '<div class="dm">→ Final: <strong>' + repairedValue + 'g</strong></div>';
+  } else { re.innerHTML = '<div class="dc">—</div>'; }
+  const failed = !matchResult || repairedValue === null;
+  if (failed) { toggle.classList.add('open'); body.classList.add('vis'); }
+  toggle.onclick = function() { const o = body.classList.toggle('vis'); toggle.classList.toggle('open',o); };
+  document.getElementById('copy-btn').onclick = function() {
+    navigator.clipboard.writeText(rawText).then(function(){
+      document.getElementById('copy-btn').textContent='copied!';
+      setTimeout(function(){ document.getElementById('copy-btn').textContent='copy'; },1500);
+    });
+  };
+}
+
+document.getElementById('ocr-file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  const prev = document.getElementById('preview-img');
+  prev.src = url; prev.style.display = 'block';
+  setStatus('loading','<span class="spinner"></span> Reading nutrition label…');
+  document.getElementById('debug-panel').style.display = 'none';
+  document.getElementById('confirm-banner').style.display = 'none';
+  try {
+    await initOCR();
+    const { data } = await ocrWorker.recognize(file);
+    const words   = data.words || [];
+    const avgConf = words.length ? words.reduce((s,w)=>s+w.confidence,0)/words.length : null;
+    const match   = extractCarbs(data.text);
+    let finalVal  = null, repairLog = [];
+    if (match) { const r = repairValue(match.raw); finalVal = r.value; repairLog = r.log; }
+    showDebug(data.text, match, finalVal, repairLog, avgConf);
+    if (finalVal !== null) {
+      setStatus('ok', '✓ OCR detected ' + finalVal + 'g carbs / 100g');
+      showConfirm(finalVal, 'OCR');
+    } else {
+      setStatus('err', '⚠ Could not extract carbs — enter manually below. See debug ↓');
+    }
+  } catch(err) {
+    setStatus('err','⚠ OCR failed — enter manually');
+    showDebug('(error: '+err.message+')', null, null, [], null);
+  }
+  e.target.value = '';
+});
+
+document.getElementById('add-btn').addEventListener('click', () => {
+  const name     = document.getElementById('ing-name').value.trim() || 'Ingredient';
+  const carbs100 = parseFloat(document.getElementById('carbs-per-100').value);
+  const grams    = parseFloat(document.getElementById('grams-used').value);
+  if (isNaN(carbs100)||isNaN(grams)) { alert('Please enter carbs per 100g and grams used.'); return; }
+  ingredients.push({ name, carbs100, grams, carbsTotal: (carbs100*grams)/100 });
+  updateRecipe();
+  showScreen(1);
+  document.getElementById('ing-name').value = '';
+  document.getElementById('carbs-per-100').value = '';
+  document.getElementById('grams-used').value = '';
+  resetScanUI();
+});
+
+function updateRecipe() {
+  const list  = document.getElementById('ingredient-list');
+  const total = ingredients.reduce((s,i)=>s+i.carbsTotal,0);
+  document.getElementById('running-carbs').innerHTML = total.toFixed(1) + ' <span>grams</span>';
+  list.innerHTML = ingredients.length
+    ? ingredients.map((ing,idx) =>
+        '<div class="ingredient-item">' +
+        '<div class="ing-name">' + ing.name + '</div>' +
+        '<div class="ing-carbs">' + ing.carbs100 + 'g/100g · ' + ing.grams + 'g</div>' +
+        '<div class="ing-total">' + ing.carbsTotal.toFixed(1) + 'g</div>' +
+        '<button class="del-btn" onclick="removeIng(' + idx + ')">✕</button>' +
+        '</div>').join('')
+    : '<p style="color:var(--muted);font-size:0.8rem;">No ingredients yet.</p>';
+}
+
+function removeIng(idx) { ingredients.splice(idx,1); updateRecipe(); }
+
+document.getElementById('add-more-btn').addEventListener('click', () => showScreen(0));
+document.getElementById('to-portion-btn').addEventListener('click', () => {
+  if (!ingredients.length) { alert('Add at least one ingredient first.'); return; }
+  showScreen(2);
+});
+document.getElementById('calc-btn').addEventListener('click', () => {
+  const dw = parseFloat(document.getElementById('dish-weight').value);
+  const pw = parseFloat(document.getElementById('portion-weight').value);
+  const tc = ingredients.reduce((s,i)=>s+i.carbsTotal,0);
+  if (isNaN(dw)||isNaN(pw)) { alert('Please enter dish weight and portion weight.'); return; }
+  if (pw>dw) { alert('Portion weight cannot exceed dish weight.'); return; }
+  const cp   = (tc/dw)*pw;
+  const c100 = (tc/dw)*100;
+  document.getElementById('result-num').textContent = cp.toFixed(1);
+  document.getElementById('breakdown').innerHTML = [
+    ['Total recipe carbs',     tc.toFixed(1) + ' g'],
+    ['Dish weight',            dw + ' g'],
+    ['Carbs per 100g of dish', c100.toFixed(1) + ' g'],
+    ['Portion weight',         pw + ' g'],
+    ['Carbs in portion',       cp.toFixed(1) + ' g'],
+  ].map(function(r){ return '<div class="bdr"><span class="k">'+r[0]+'</span><span>'+r[1]+'</span></div>'; }).join('');
+  document.getElementById('result-area').style.display = 'block';
+  document.getElementById('result-area').scrollIntoView({behavior:'smooth'});
+});
+document.getElementById('back-btn').addEventListener('click', () => showScreen(1));
+document.getElementById('new-recipe-btn').addEventListener('click', () => {
+  ingredients = [];
+  updateRecipe();
+  document.getElementById('dish-weight').value = '';
+  document.getElementById('portion-weight').value = '';
+  document.getElementById('result-area').style.display = 'none';
+  showScreen(0);
+});
+
+showScreen(0);
+
+// Register service worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => {
+      console.warn('SW registration failed:', err);
+    });
+  });
+}
+</script>
+</body>
+</html>
