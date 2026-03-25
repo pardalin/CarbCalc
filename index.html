@@ -161,7 +161,7 @@
       <div class="scanner-corners"></div>
       <div class="scanner-line"></div>
     </div>
-    <div class="scanner-label">Osoita viivakoodiin<br>Pidä tukevasti — skannaa automaattisesti<br><small style="opacity:0.5;font-size:0.65rem;">Huom: tunnistus ei aina onnistu selaimessa</small></div>
+    <div class="scanner-label">Osoita viivakoodiin<br>Pidä tukevasti — skannaa automaattisesti<br><small style="opacity:0.5;font-size:0.65rem;">Huom: tunnistus ei aina onnistu</small></div>
     <div class="scanner-status" id="scanner-status">Skannataan…</div>
     <button class="scanner-close-btn" id="scanner-close">✕</button>
   </div>
@@ -172,7 +172,7 @@
 <div class="screen visible" id="screen-0">
   <div class="card">
     <div class="card-title">Lisää ainesosa</div>
-    <div class="card-sub">Hae ainesosa Fineli-tietokannasta, skannaa viivakoodi tai kuvaa ravintoarvoetiketti</div>
+    <div class="card-sub">Hae ainesosa Fineli-tietokannasta, skannaa viivakoodi tai kuvaa ravintoarvotiedot</div>
     <div class="scan-row">
       <button class="scan-btn" id="search-btn">
         <span class="sb-icon">🔍</span>
@@ -186,8 +186,8 @@
       </button>
       <button class="scan-btn" id="label-btn">
         <span class="sb-icon">📷</span>
-        <span class="sb-title">Kuvaa etiketti</span>
-        <span class="sb-sub">Ravintoarvo-<br>taulukko, OCR</span>
+        <span class="sb-title">Kuvaa ravintoarvot</span>
+        <span class="sb-sub">OCR tunnistaa<br>hiilihydraatit</span>
       </button>
     </div>
     <!-- Fineli search panel -->
@@ -210,7 +210,7 @@
       <div class="q" id="confirm-q"></div>
       <div class="confirm-row">
         <button class="btn-yes" id="confirm-yes">✓ Kyllä, käytä tätä</button>
-        <button class="btn-no"  id="confirm-no">✗ Ei, kirjoitan itse</button>
+        <button class="btn-no"  id="confirm-no">✗ Ei, muokataan</button>
       </div>
     </div>
     <div class="debug-panel" id="debug-panel">
@@ -269,11 +269,11 @@
 <div class="screen" id="screen-2">
   <div class="card">
     <div class="card-title">Valmiin ruoan paino</div>
-    <div class="card-sub">Punnitse koko ruoka kypsennyksen jälkeen — vesi ja liha muuttavat painoa</div>
+    <div class="card-sub">Punnitse koko ruoka kypsennyksen jälkeen - ota huomioon esim. vesi, kattilan paino...</div>
     <div class="lbl">Ruoan kokonaispaino (g)</div>
     <input type="number" id="dish-weight" placeholder="esim. 850" min="1" step="1">
     <div class="lbl">Yhden annoksen paino (g)</div>
-    <input type="number" id="portion-weight" placeholder="esim. 280" min="1" step="1">
+    <input type="number" id="portion-weight" placeholder="esim. 280 - huomioi lautasen paino" min="1" step="1">
     <button class="btn btn-primary mt" id="calc-btn">Laske →</button>
   </div>
   <div id="result-area" style="display:none">
@@ -317,7 +317,7 @@ function setStatus(state, html) {
 function showConfirm(value, source) {
   const b = document.getElementById('confirm-banner');
   document.getElementById('confirm-q').innerHTML =
-    source + ' found <strong>' + value + 'g carbs / 100g</strong>. Näyttääkö oikealta?';
+    source + ': käytetään <strong>' + value + 'g hh / 100 g</strong>. Näyttääkö oikealta?';
   b.style.display = 'block';
   document.getElementById('confirm-yes').onclick = () => {
     document.getElementById('carbs-per-100').value = value;
@@ -367,7 +367,7 @@ function showProductCard(prod) {
 
 async function startBarcodeScanner() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert('Live-kamera ei ole käytettävissä tässä.\n\nViivakoodi-skannaus vaatii HTTPS-yhteyden (esim. GitHub Pages tai Netlify).\n\nKäytä toistaiseksi Kuvaa etiketti -toimintoa.');
+    alert('Live-kamera ei ole käytettävissä tässä.\n\nKäytä toistaiseksi Kuvaa ravintoarvot -toimintoa.');
     return;
   }
   try {
@@ -435,10 +435,10 @@ async function startBarcodeScanner() {
                 showProductCard(prod);
                 showConfirm(prod.carbs, 'Open Food Facts');
               } else {
-                setStatus('err', '⚠ Viivakoodi ' + code + ' ei löydy Open Food Facts -tietokannasta — kokeile skannata ravintoarvoetiketti');
+                setStatus('err', '⚠ Viivakoodi ' + code + ' ei löydy Open Food Facts -tietokannasta — kokeile skannata ravintoarvot');
               }
             } catch(e) {
-              setStatus('err', '⚠ Verkkovirhe — tarkista yhteys tai kuvaa ravintoarvoetiketti');
+              setStatus('err', '⚠ Verkkovirhe — tarkista yhteys tai kuvaa ravintoarvot');
             }
           }, 600);
           return; // don't schedule another tick
@@ -446,7 +446,7 @@ async function startBarcodeScanner() {
         } catch(e) {
           // NotFoundException is normal — no barcode in this frame yet
           attempts++;
-          if (attempts % 30 === 0) statusEl.textContent = 'Skannataan… pidä tukevasti';
+          if (attempts % 30 === 0) statusEl.textContent = 'Skannataan… pidä paikallaan';
         }
       }
 
@@ -469,314 +469,82 @@ function stopBarcodeScanner() {
 }
 
 document.getElementById('scanner-close').addEventListener('click', stopBarcodeScanner);
-// ── Local Finnish food database (Fineli/Diabetesliitto sources) ──────────
-// Values are g carbohydrates per 100g, raw unless noted
-// Organised by category with Finnish search terms and aliases
-const FOODS_FI = [
-  // ── Juurekset & kasvikset ──
-  { n:'Peruna, keitetty',        c:16.0, cat:'Kasvikset',  tags:'peruna keitetty' },
-  { n:'Peruna, raaka',           c:15.0, cat:'Kasvikset',  tags:'peruna raaka' },
-  { n:'Perunasose',              c:14.0, cat:'Kasvikset',  tags:'perunasose muusi' },
-  { n:'Bataatti, keitetty',      c:17.0, cat:'Kasvikset',  tags:'bataatti' },
-  { n:'Porkkana, raaka',         c:7.0,  cat:'Kasvikset',  tags:'porkkana raaka' },
-  { n:'Porkkana, keitetty',      c:5.0,  cat:'Kasvikset',  tags:'porkkana keitetty' },
-  { n:'Sipuli, raaka',           c:7.0,  cat:'Kasvikset',  tags:'sipuli raaka' },
-  { n:'Sipuli, keitetty',        c:4.5,  cat:'Kasvikset',  tags:'sipuli keitetty' },
-  { n:'Valkosipuli',             c:28.0, cat:'Kasvikset',  tags:'valkosipuli' },
-  { n:'Lanttu, keitetty',        c:5.0,  cat:'Kasvikset',  tags:'lanttu' },
-  { n:'Nauris, keitetty',        c:3.5,  cat:'Kasvikset',  tags:'nauris' },
-  { n:'Punajuuri, keitetty',     c:8.0,  cat:'Kasvikset',  tags:'punajuuri' },
-  { n:'Palsternakka, keitetty',  c:11.0, cat:'Kasvikset',  tags:'palsternakka' },
-  { n:'Selleri, varsi',          c:2.0,  cat:'Kasvikset',  tags:'selleri varsi' },
-  { n:'Selleri, juuri',          c:5.0,  cat:'Kasvikset',  tags:'selleri juuri' },
-  { n:'Purjo',                   c:4.5,  cat:'Kasvikset',  tags:'purjo' },
-  { n:'Fenkoli',                 c:4.0,  cat:'Kasvikset',  tags:'fenkoli' },
-  // ── Vihannekset ──
-  { n:'Tomaatti',                c:3.0,  cat:'Vihannekset',tags:'tomaatti' },
-  { n:'Kurkku',                  c:2.0,  cat:'Vihannekset',tags:'kurkku' },
-  { n:'Paprika, punainen',       c:6.0,  cat:'Vihannekset',tags:'paprika punainen' },
-  { n:'Paprika, vihreä',         c:3.0,  cat:'Vihannekset',tags:'paprika vihreä' },
-  { n:'Parsakaali',              c:4.0,  cat:'Vihannekset',tags:'parsakaali' },
-  { n:'Kukkakaali',              c:3.0,  cat:'Vihannekset',tags:'kukkakaali' },
-  { n:'Valkokaali',              c:5.0,  cat:'Vihannekset',tags:'valkokaali kaali' },
-  { n:'Punakaali',               c:5.0,  cat:'Vihannekset',tags:'punakaali' },
-  { n:'Lehtikaali',              c:5.0,  cat:'Vihannekset',tags:'lehtikaali' },
-  { n:'Kesäkurpitsa',            c:2.5,  cat:'Vihannekset',tags:'kesäkurpitsa zucchini' },
-  { n:'Munakoiso',               c:3.0,  cat:'Vihannekset',tags:'munakoiso' },
-  { n:'Pinaatti',                c:1.5,  cat:'Vihannekset',tags:'pinaatti' },
-  { n:'Lehtisalaatti',           c:1.5,  cat:'Vihannekset',tags:'salaatti lehtisalaatti' },
-  { n:'Jäävuorisalaatti',        c:2.0,  cat:'Vihannekset',tags:'jäävuori salaatti' },
-  { n:'Ruusukaali',              c:5.0,  cat:'Vihannekset',tags:'ruusukaali' },
-  { n:'Parsa',                   c:2.0,  cat:'Vihannekset',tags:'parsa' },
-  { n:'Maissi, keitetty',        c:22.0, cat:'Vihannekset',tags:'maissi' },
-  { n:'Herne, pakastettu',       c:10.0, cat:'Vihannekset',tags:'herne pakastettu' },
-  { n:'Herne, tuore',            c:12.0, cat:'Vihannekset',tags:'herne tuore' },
-  { n:'Avokado',                 c:1.8,  cat:'Vihannekset',tags:'avokado' },
-  // ── Sienet ──
-  { n:'Herkkusieni, raaka',      c:0.5,  cat:'Sienet',     tags:'herkkusieni sieni' },
-  { n:'Herkkusieni, paistettu',  c:0.5,  cat:'Sienet',     tags:'herkkusieni paistettu' },
-  { n:'Kantarelli',              c:1.5,  cat:'Sienet',     tags:'kantarelli' },
-  // ── Palkokasvit ──
-  { n:'Linssit, keitetty',       c:16.0, cat:'Palkokasvit',tags:'linssi linssit' },
-  { n:'Kikherne, keitetty',      c:18.0, cat:'Palkokasvit',tags:'kikherne' },
-  { n:'Kidney-papu, keitetty',   c:15.0, cat:'Palkokasvit',tags:'kidney papu' },
-  { n:'Valkoiset pavut, keitetty',c:14.0,cat:'Palkokasvit',tags:'valkoiset pavut' },
-  { n:'Mustapapu, keitetty',     c:14.0, cat:'Palkokasvit',tags:'mustapapu' },
-  { n:'Soijapapu, keitetty',     c:6.0,  cat:'Palkokasvit',tags:'soijapapu' },
-  { n:'Edamame',                 c:8.0,  cat:'Palkokasvit',tags:'edamame' },
-  // ── Viljat & tärkkelys ──
-  { n:'Riisi, valkoinen, keitetty',c:26.0,cat:'Viljat',   tags:'riisi keitetty valkoinen' },
-  { n:'Riisi, ruskea, keitetty', c:24.0, cat:'Viljat',    tags:'riisi ruskea täysjyvä' },
-  { n:'Pasta/makaroni, keitetty',c:24.0, cat:'Viljat',    tags:'pasta makaroni spagetti keitetty' },
-  { n:'Pasta, täysjyvä, keitetty',c:22.0,cat:'Viljat',    tags:'pasta täysjyvä keitetty' },
-  { n:'Kuskus, keitetty',        c:23.0, cat:'Viljat',    tags:'kuskus' },
-  { n:'Kvinoa, keitetty',        c:19.0, cat:'Viljat',    tags:'kvinoa' },
-  { n:'Ohrasuurimo, keitetty',   c:22.0, cat:'Viljat',    tags:'ohra suurimo' },
-  { n:'Kauraryynit, keitetty',   c:10.0, cat:'Viljat',    tags:'kaura kauraryynit puurohiutaleet' },
-  { n:'Kaurapuuro (vesi)',        c:10.0, cat:'Viljat',    tags:'puuro kaurapuuro' },
-  { n:'Vehnäjauho',              c:70.0, cat:'Viljat',    tags:'vehnäjauho jauho vehnä' },
-  { n:'Ruisjauho',               c:62.0, cat:'Viljat',    tags:'ruisjauho ruis' },
-  { n:'Tärkkelys, perunajauho',  c:84.0, cat:'Viljat',    tags:'tärkkelys perunajauho maissitärkkelys' },
-  { n:'Korppujauho',             c:76.0, cat:'Viljat',    tags:'korppujauho' },
-  // ── Leivät ──
-  { n:'Ruisleipä',               c:42.0, cat:'Leivät',    tags:'ruisleipä ruis leipä' },
-  { n:'Näkkileipä, ruis',        c:65.0, cat:'Leivät',    tags:'näkkileipä' },
-  { n:'Sekaleipä',               c:44.0, cat:'Leivät',    tags:'sekaleipä' },
-  { n:'Vehnäleipä, vaalea',      c:49.0, cat:'Leivät',    tags:'vehnäleipä vaalea paahtoleipä' },
-  { n:'Sämpylä',                 c:47.0, cat:'Leivät',    tags:'sämpylä' },
-  { n:'Pita-leipä',              c:54.0, cat:'Leivät',    tags:'pita' },
-  // ── Liha & kala ──
-  { n:'Naudan jauheliha, raaka', c:0.0,  cat:'Liha',      tags:'jauheliha nauta naudanliha' },
-  { n:'Sian jauheliha, raaka',   c:0.0,  cat:'Liha',      tags:'jauheliha sika sianlihaa' },
-  { n:'Broilerin jauheliha',     c:0.0,  cat:'Liha',      tags:'broileri jauheliha' },
-  { n:'Broilerin rintafilee',    c:0.0,  cat:'Liha',      tags:'broileri rintafilee kana' },
-  { n:'Broilerin koipifilee',    c:0.0,  cat:'Liha',      tags:'broileri koipi' },
-  { n:'Naudanliha, paisti',      c:0.0,  cat:'Liha',      tags:'nauta paisti naudanliha' },
-  { n:'Sianliha, kyljys',        c:0.0,  cat:'Liha',      tags:'sika kyljys porsas' },
-  { n:'Karitsa/lammas',          c:0.0,  cat:'Liha',      tags:'karitsa lammas' },
-  { n:'Kalkkunan rintafilee',    c:0.0,  cat:'Liha',      tags:'kalkkuna' },
-  { n:'Lohifilee, raaka',        c:0.0,  cat:'Kala',      tags:'lohi lohifilee' },
-  { n:'Kirjolohifilee, raaka',   c:0.0,  cat:'Kala',      tags:'kirjolohi' },
-  { n:'Silakka, raaka',          c:0.0,  cat:'Kala',      tags:'silakka' },
-  { n:'Sei/turska, raaka',       c:0.0,  cat:'Kala',      tags:'sei turska valkoinen kala' },
-  { n:'Tonnikala, säilyke',      c:0.0,  cat:'Kala',      tags:'tonnikala säilyke' },
-  { n:'Katkarapu',               c:0.0,  cat:'Kala',      tags:'katkarapu' },
-  // ── Maitotalous & munat ──
-  { n:'Kananmuna, kokonainen',   c:0.5,  cat:'Munat',     tags:'kananmuna muna' },
-  { n:'Maito, kevyt (1%)',        c:4.8,  cat:'Maitotuotteet',tags:'maito kevytmaito' },
-  { n:'Maito, täys (3.5%)',       c:4.8,  cat:'Maitotuotteet',tags:'maito täysmaito' },
-  { n:'Maito, rasvaton',         c:5.0,  cat:'Maitotuotteet',tags:'rasvaton maito' },
-  { n:'Piimä',                   c:4.5,  cat:'Maitotuotteet',tags:'piimä' },
-  { n:'Kerma, kuohu (38%)',       c:3.0,  cat:'Maitotuotteet',tags:'kerma kuohukerma' },
-  { n:'Kerma, ruoka (15%)',       c:4.0,  cat:'Maitotuotteet',tags:'ruokakerma kerma' },
-  { n:'Kerma, hapan (creme fraiche)',c:3.5,cat:'Maitotuotteet',tags:'hapankerma creme fraiche' },
-  { n:'Jogurtti, maustamaton',   c:6.0,  cat:'Maitotuotteet',tags:'jogurtti maustamaton' },
-  { n:'Rahka, maustamaton',      c:4.0,  cat:'Maitotuotteet',tags:'rahka maustamaton' },
-  { n:'Viili',                   c:4.0,  cat:'Maitotuotteet',tags:'viili' },
-  { n:'Juusto, Edam/Oltermanni', c:0.5,  cat:'Maitotuotteet',tags:'juusto edam oltermanni' },
-  { n:'Juusto, Emmental',        c:0.5,  cat:'Maitotuotteet',tags:'emmental juusto' },
-  { n:'Juusto, Brie/Camembert',  c:0.5,  cat:'Maitotuotteet',tags:'brie camembert' },
-  { n:'Juusto, raejuusto',       c:3.0,  cat:'Maitotuotteet',tags:'raejuusto cottage' },
-  { n:'Juusto, tuorejuusto',     c:3.5,  cat:'Maitotuotteet',tags:'tuorejuusto philadelphia' },
-  { n:'Voi',                     c:0.5,  cat:'Maitotuotteet',tags:'voi' },
-  // ── Kasvijuomat ──
-  { n:'Kaurajuoma',              c:7.0,  cat:'Kasvijuomat',tags:'kaurajuoma oatly' },
-  { n:'Soijajuoma, maustamaton', c:2.5,  cat:'Kasvijuomat',tags:'soijajuoma' },
-  { n:'Mantelijuoma, maustamaton',c:1.5, cat:'Kasvijuomat',tags:'mantelijuoma' },
-  { n:'Riisijuoma',              c:10.0, cat:'Kasvijuomat',tags:'riisijuoma' },
-  // ── Hedelmät ──
-  { n:'Omena',                   c:12.0, cat:'Hedelmät',  tags:'omena' },
-  { n:'Päärynä',                 c:12.0, cat:'Hedelmät',  tags:'päärynä' },
-  { n:'Banaani',                 c:20.0, cat:'Hedelmät',  tags:'banaani' },
-  { n:'Appelsiini',              c:10.0, cat:'Hedelmät',  tags:'appelsiini' },
-  { n:'Mandariini',              c:11.0, cat:'Hedelmät',  tags:'mandariini klementiini' },
-  { n:'Greippi',                 c:8.0,  cat:'Hedelmät',  tags:'greippi' },
-  { n:'Kiivi',                   c:10.0, cat:'Hedelmät',  tags:'kiivi' },
-  { n:'Mango',                   c:14.0, cat:'Hedelmät',  tags:'mango' },
-  { n:'Ananas',                  c:12.0, cat:'Hedelmät',  tags:'ananas' },
-  { n:'Persikka/nektariini',     c:9.0,  cat:'Hedelmät',  tags:'persikka nektariini' },
-  { n:'Luumu',                   c:10.0, cat:'Hedelmät',  tags:'luumu' },
-  { n:'Viinirypäleet',           c:16.0, cat:'Hedelmät',  tags:'viinirypäleet rypäleet' },
-  { n:'Vesimeloni',              c:7.0,  cat:'Hedelmät',  tags:'vesimeloni meloni' },
-  { n:'Sitruuna',                c:6.0,  cat:'Hedelmät',  tags:'sitruuna' },
-  // ── Marjat ──
-  { n:'Mustikka',                c:8.0,  cat:'Marjat',    tags:'mustikka' },
-  { n:'Puolukka',                c:8.0,  cat:'Marjat',    tags:'puolukka' },
-  { n:'Mansikka',                c:7.0,  cat:'Marjat',    tags:'mansikka' },
-  { n:'Vadelma',                 c:5.0,  cat:'Marjat',    tags:'vadelma' },
-  { n:'Karpalo',                 c:7.0,  cat:'Marjat',    tags:'karpalo' },
-  { n:'Mustaherukka',            c:8.0,  cat:'Marjat',    tags:'mustaherukka herukka' },
-  { n:'Pakastemansikka',         c:7.0,  cat:'Marjat',    tags:'pakastemansikka' },
-  // ── Rasvat & öljyt ──
-  { n:'Rypsiöljy',               c:0.0,  cat:'Rasvat',    tags:'öljy rypsiöljy' },
-  { n:'Oliiviöljy',              c:0.0,  cat:'Rasvat',    tags:'oliiviöljy' },
-  { n:'Margariini (60%)',        c:0.5,  cat:'Rasvat',    tags:'margariini' },
-  // ── Pähkinät & siemenet ──
-  { n:'Manteli',                 c:7.0,  cat:'Pähkinät',  tags:'manteli' },
-  { n:'Cashewpähkinä',           c:27.0, cat:'Pähkinät',  tags:'cashew' },
-  { n:'Maapähkinä',              c:12.0, cat:'Pähkinät',  tags:'maapähkinä' },
-  { n:'Saksanpähkinä',           c:7.0,  cat:'Pähkinät',  tags:'saksanpähkinä' },
-  { n:'Auringonkukansiemen',     c:11.0, cat:'Pähkinät',  tags:'auringonkukan siemen' },
-  { n:'Pellavansiemen',          c:2.0,  cat:'Pähkinät',  tags:'pellavansiemen' },
-  { n:'Chiansiemen',             c:4.0,  cat:'Pähkinät',  tags:'chia' },
-  // ── Sokeri & makeutus ──
-  { n:'Sokeri, valkoinen',       c:100.0,cat:'Sokeri',    tags:'sokeri' },
-  { n:'Hunaja',                  c:78.0, cat:'Sokeri',    tags:'hunaja' },
-  { n:'Vaahterasiirappi',        c:67.0, cat:'Sokeri',    tags:'vaahterasiirappi siirappi' },
-  { n:'Fariinisokeri',           c:95.0, cat:'Sokeri',    tags:'fariinisokeri ruskea sokeri' },
-  // ── Muut ──
-  { n:'Tomaattipyree',           c:14.0, cat:'Muut',      tags:'tomaattipyree' },
-  { n:'Tomaattimurska, säilyke', c:5.0,  cat:'Muut',      tags:'tomaattimurska' },
-  { n:'Kookosmaito',             c:3.0,  cat:'Muut',      tags:'kookosmaito' },
-  { n:'Soijakastike',            c:6.0,  cat:'Muut',      tags:'soijakastike' },
-  { n:'Ketsuppi',                c:25.0, cat:'Muut',      tags:'ketsuppi' },
-  { n:'Sinappi',                 c:6.0,  cat:'Muut',      tags:'sinappi' },
-  { n:'Majoneesi',               c:2.0,  cat:'Muut',      tags:'majoneesi' },
-];
-
-function searchFoods(q) {
-  if (!q) return [];
-  const terms = q.toLowerCase().trim().split(/\s+/);
-  return FOODS_FI.filter(f => {
-    const haystack = (f.n + ' ' + f.tags + ' ' + f.cat).toLowerCase();
-    return terms.every(t => haystack.includes(t));
-  }).sort((a, b) => {
-    // Exact name match first
-    const aExact = a.n.toLowerCase().startsWith(q.toLowerCase()) ? 0 : 1;
-    const bExact = b.n.toLowerCase().startsWith(q.toLowerCase()) ? 0 : 1;
-    return aExact - bExact || a.n.localeCompare(b.n, 'fi');
-  });
-}
 
 // ── Embedded Finnish ingredient database (Fineli/THL) ────────────────────
 const FINELI_DB = {
   "Juurekset ja vihannekset": [
-    {nimi:"Peruna, keitetty", hh:17.0},
-    {nimi:"Peruna, raaka", hh:15.8},
-    {nimi:"Bataatti, keitetty", hh:20.0},
-    {nimi:"Porkkana, raaka", hh:6.2},
-    {nimi:"Porkkana, keitetty", hh:5.4},
-    {nimi:"Lanttu, keitetty", hh:5.3},
-    {nimi:"Punajuuri, keitetty", hh:9.5},
-    {nimi:"Sipuli, keltainen", hh:6.5},
-    {nimi:"Purjo", hh:4.5},
-    {nimi:"Valkosipuli", hh:26.0},
-    {nimi:"Tomaatti", hh:3.1},
-    {nimi:"Kurkku", hh:1.8},
-    {nimi:"Paprika, punainen", hh:6.0},
-    {nimi:"Paprika, vihreä", hh:3.7},
-    {nimi:"Kesäkurpitsa", hh:2.6},
-    {nimi:"Parsakaali", hh:4.0},
-    {nimi:"Kukkakaali", hh:3.0},
-    {nimi:"Valkokaali", hh:4.3},
-    {nimi:"Pinaatti, tuore", hh:1.4},
-    {nimi:"Salaatti, jääsalaatti", hh:1.7},
-    {nimi:"Maissi, purkki", hh:16.5},
-    {nimi:"Herne, pakastettu", hh:8.5},
-    {nimi:"Pavut, kidney keitetty", hh:13.5},
-    {nimi:"Linssit, keitetty", hh:14.5},
-    {nimi:"Selleri, varsi", hh:2.2},
-    {nimi:"Fenkolijuuri", hh:5.0},
+    {nimi:"Peruna", hh:15.5},
+    {nimi:"Bataatti", hh:16.8},
+    {nimi:"Porkkana", hh:5.6},
+    {nimi:"Keltasipuli", hh:4.8},
+    {nimi:"Punasipuli", hh:5.4},
+    {nimi:"Purjosipuli", hh:2.4},
+    {nimi:"Valkosipuli", hh:16.3},
+    {nimi:"Tomaatti", hh:3.5},
+    {nimi:"Kurkku", hh:1.4},
+    {nimi:"Paprika, punainen", hh:4.5},
+    {nimi:"Kesäkurpitsa", hh:2.5},
+    {nimi:"Parsakaali", hh:1.6},
+    {nimi:"Kukkakaali", hh:2.4},
+    {nimi:"Jääsalaatti", hh:1.0},
+    {nimi:"Maissi, jyvät", hh:25.6},
+    {nimi:"Maissintähkä, kokonainen", hh:15.4},
+    {nimi:"Herne", hh:9.5},
   ],
   "Liha ja kala": [
-    {nimi:"Jauheliha, nauta (raaka)", hh:0.0},
-    {nimi:"Jauheliha, sika-nauta (raaka)", hh:0.0},
-    {nimi:"Jauheliha, broileri (raaka)", hh:0.0},
-    {nimi:"Broilerin rintafilee", hh:0.0},
-    {nimi:"Broilerin koipi-reisi", hh:0.0},
-    {nimi:"Naudan paisti", hh:0.0},
-    {nimi:"Sianliha, filee", hh:0.0},
-    {nimi:"Kalkkunan jauheliha", hh:0.0},
-    {nimi:"Lohi, raaka", hh:0.0},
-    {nimi:"Kirjolohi, raaka", hh:0.0},
-    {nimi:"Tonnikala, öljyssä (purkki)", hh:0.0},
-    {nimi:"Tonnikala, vedessä (purkki)", hh:0.0},
-    {nimi:"Seiti, raaka", hh:0.0},
-    {nimi:"Katkaravut, keitetty", hh:0.0},
-    {nimi:"Kananmuna", hh:0.7},
-    {nimi:"Grillimakkara", hh:3.5},
-    {nimi:"Lenkkimakkara", hh:5.0},
-    {nimi:"Nakki", hh:3.0},
+    {nimi:"Jauheliha", hh:0.0},
+    {nimi:"Broileri", hh:0.0},
+    {nimi:"Naudanliha", hh:0.0},
+    {nimi:"Sianliha", hh:0.0},
+    {nimi:"Kala", hh:0.0},
+    {nimi:"Katkaravut", hh:0.0},
+    {nimi:"Kananmuna", hh:0.3},
   ],
   "Viljatuotteet": [
-    {nimi:"Pasta, keitetty", hh:25.0},
-    {nimi:"Pasta, täysjyvä, keitetty", hh:23.0},
-    {nimi:"Riisi, valkoinen, keitetty", hh:27.0},
-    {nimi:"Riisi, täysjyvä, keitetty", hh:25.0},
-    {nimi:"Kaurapuuro (vedessä)", hh:11.0},
-    {nimi:"Kaurahiutaleet, kuiva", hh:60.0},
-    {nimi:"Vehnäjauho", hh:70.0},
-    {nimi:"Ruisjauho", hh:60.0},
-    {nimi:"Ohrasuurimot, kuiva", hh:63.0},
-    {nimi:"Kvinoa, keitetty", hh:18.0},
-    {nimi:"Ruisleipä (per 100g)", hh:41.0},
-    {nimi:"Näkkileipä", hh:65.0},
+    {nimi:"Pasta, spagetti, makaroni", hh:66.4},
+    {nimi:"Riisi, täysjyvä", hh:71.3},
+    {nimi:"Kaurahiutaleet", hh:60.0},
+    {nimi:"Vehnäjauho, puolikarkea", hh:74.0},
   ],
   "Maitotuotteet": [
-    {nimi:"Maito, täysmaito", hh:4.8},
-    {nimi:"Maito, rasvaton", hh:4.9},
-    {nimi:"Piimä", hh:4.3},
-    {nimi:"Kerma, kuohukerma", hh:3.0},
-    {nimi:"Kerma, kevytkerma", hh:4.1},
-    {nimi:"Smetana", hh:3.5},
-    {nimi:"Crème fraîche", hh:3.5},
-    {nimi:"Maitorahka, maustamaton", hh:4.0},
-    {nimi:"Jugurtti, maustamaton", hh:5.0},
-    {nimi:"Juusto, emmental", hh:0.0},
-    {nimi:"Juusto, cheddar", hh:0.5},
-    {nimi:"Tuorejuusto", hh:4.0},
-    {nimi:"Voi", hh:0.5},
-    {nimi:"Margariini", hh:1.0},
-    {nimi:"Kaurajuoma, maustamaton", hh:6.5},
-    {nimi:"Soijajuoma, maustamaton", hh:2.5},
+    {nimi:"Maito", hh:4.8},
+    {nimi:"Maito, laktoositon", hh:3.0},
   ],
   "Hedelmät ja marjat": [
-    {nimi:"Omena", hh:11.0},
-    {nimi:"Banaani", hh:20.0},
-    {nimi:"Appelsiini", hh:8.5},
-    {nimi:"Mandariini", hh:9.0},
-    {nimi:"Päärynä", hh:12.0},
-    {nimi:"Mango", hh:14.0},
-    {nimi:"Viinirypäleet", hh:15.5},
-    {nimi:"Mustikka", hh:6.5},
-    {nimi:"Mansikka", hh:5.5},
-    {nimi:"Vadelma", hh:4.5},
-    {nimi:"Puolukka", hh:6.3},
-    {nimi:"Lakka / hilla", hh:5.2},
-    {nimi:"Mustaherukka", hh:6.0},
+    {nimi:"Omena, keskiarvo, punnittu kuorineen", hh:7.7},
+    {nimi:"Banaani, punnittu kuorineen", hh:12.3},
+    {nimi:"Appelsiini, punnittu kuorineen", hh:6.4},
+    {nimi:"Mandariini, punnittu kuorineen", hh:6.6},
+    {nimi:"Päärynä, punnittu kuorineen", hh:7.0},
+    {nimi:"Mango, kuorittu", hh:14.1},
+    {nimi:"Viinirypäleet (kivetön)", hh:15.5},
+    {nimi:"Viinirypäleet (kivineen)", hh:14.7},
+    {nimi:"Mustikka", hh:10.2},
+    {nimi:"Mansikka", hh:7.7},
+    {nimi:"Vadelma", hh:5.7},
+    {nimi:"Puolukka", hh:8.9},
+    {nimi:"Punaherukka", hh:7.5},
   ],
   "Palkokasvit ja pähkinät": [
-    {nimi:"Kikherneet, keitetty", hh:16.0},
-    {nimi:"Linssit, punainen, keitetty", hh:14.0},
-    {nimi:"Mustapapu, keitetty", hh:13.0},
-    {nimi:"Tofu", hh:1.5},
-    {nimi:"Maapähkinä", hh:10.0},
-    {nimi:"Manteli", hh:6.0},
-    {nimi:"Auringonkukansiemen", hh:11.0},
-    {nimi:"Kurpitsansiemen", hh:3.0},
+    {nimi:"Kikherne suolattomassa vedessä", hh:17.6},
+    {nimi:"Linssit, punainen, kuivattu", hh:45.8},
+    {nimi:"Mustapapu, säilyke", hh:9.7},
+    {nimi:"Tofu, kiinteä", hh:0.5},
+    {nimi:"Maapähkinä", hh:12.5},
+    {nimi:"Manteli", hh:6.6},
   ],
   "Öljyt, mausteet ja muut": [
     {nimi:"Rypsiöljy", hh:0.0},
     {nimi:"Oliiviöljy", hh:0.0},
-    {nimi:"Tomaattimurska, purkki", hh:5.5},
-    {nimi:"Tomaattipyree", hh:15.0},
-    {nimi:"Kookosmaito", hh:3.5},
-    {nimi:"Soijakastike", hh:8.0},
-    {nimi:"Sinappi", hh:5.0},
-    {nimi:"Ketsuppi", hh:25.0},
+    {nimi:"Kookosmaito", hh:2.8},
+    {nimi:"Soijakastike", hh:9.5},
+    {nimi:"Sinappi", hh:14.1},
+    {nimi:"Ketsuppi", hh:19.2},
     {nimi:"Sokeri, valkoinen", hh:100.0},
-    {nimi:"Hunaja", hh:78.0},
-    {nimi:"Vaahterasirappi", hh:67.0},
+    {nimi:"Hunaja", hh:80.8},
+    {nimi:"Siirappi", hh:74.1},
   ],
 };
-
-// Flatten DB to array for searching
-const FINELI_FLAT = [];
-for (const [cat, items] of Object.entries(FINELI_DB)) {
-  for (const item of items) {
-    FINELI_FLAT.push({...item, kategoria: cat});
-  }
-}
 
 // ── Fineli search UI ──────────────────────────────────────────────────────
 document.getElementById('search-btn').addEventListener('click', () => {
