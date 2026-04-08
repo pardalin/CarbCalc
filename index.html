@@ -546,6 +546,11 @@ const FINELI_DB = {
   ],
 };
 
+// Flat list for search (with category tag added)
+const FINELI_FLAT = Object.entries(FINELI_DB).flatMap(([cat, items]) =>
+  items.map(item => ({ ...item, kategoria: cat }))
+);
+
 // ── Fineli search UI ──────────────────────────────────────────────────────
 document.getElementById('search-btn').addEventListener('click', () => {
   resetScanUI();
