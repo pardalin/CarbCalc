@@ -141,18 +141,77 @@
 
   .spinner { display:inline-block; width:13px; height:13px; border:2px solid rgba(0,0,0,0.15); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; margin-right:5px; }
   @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ── Bottom nav ── */
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--ink); display: flex; z-index: 200; border-top: 1px solid #333; }
+  .bnav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 10px 4px; background: none; border: none; color: rgba(255,255,255,0.45); font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.04em; cursor: pointer; transition: color 0.2s; }
+  .bnav-btn.active { color: var(--accent); }
+  .bnav-btn .bni { font-size: 1.2rem; }
+
+  /* ── Saved items screen ── */
+  .section-title { font-family: var(--serif); font-size: 1rem; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+  .saved-item { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .saved-item:last-child { border-bottom: none; }
+  .si-info { flex: 1; }
+  .si-name { font-size: 0.88rem; font-weight: 500; }
+  .si-sub  { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+  .si-actions { display: flex; gap: 6px; }
+  .si-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-family: var(--mono); font-size: 0.72rem; cursor: pointer; color: var(--muted); white-space: nowrap; }
+  .si-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .si-btn.del:hover { border-color: #c00; color: #c00; }
+  .empty-state { font-size: 0.78rem; color: var(--muted); text-align: center; padding: 20px 0; }
+
+  /* ── Add vessel / recipe form inline ── */
+  .add-form { background: #f0ebe0; border-radius: 10px; padding: 14px; margin-top: 10px; display: none; }
+  .add-form.visible { display: block; }
+  .add-form-row { display: flex; gap: 8px; align-items: flex-end; }
+  .add-form-row input { margin-bottom: 0; flex: 1; }
+  .add-form-row .w120 { width: 120px; flex: none; }
+  .add-form-save { padding: 10px 14px; background: var(--accent2); color: white; border: none; border-radius: 8px; font-family: var(--mono); font-size: 0.8rem; cursor: pointer; white-space: nowrap; }
+
+  /* ── Recipe template picker (screen 1) ── */
+  .recipe-picker { margin-bottom: 14px; }
+  .recipe-picker-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+  .recipe-picker-scroll::-webkit-scrollbar { display: none; }
+  .rp-chip { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--card); font-family: var(--mono); font-size: 0.78rem; cursor: pointer; white-space: nowrap; color: var(--ink); transition: border-color 0.15s, background 0.15s; }
+  .rp-chip:hover { border-color: var(--accent); background: #fff8f5; }
+  .rp-chip.active { border-color: var(--accent2); background: #edf7f0; color: var(--accent2); font-weight: 500; }
+
+  /* ── Scale buttons (screen 1) ── */
+  .scale-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .scale-btn { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); font-family: var(--mono); font-size: 0.78rem; cursor: pointer; color: var(--muted); transition: border-color 0.15s; }
+  .scale-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Vessel picker (screen 2) ── */
+  .vessel-section { margin-bottom: 14px; }
+  .vessel-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .vessel-chip { padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--card); font-family: var(--mono); font-size: 0.75rem; cursor: pointer; color: var(--muted); transition: all 0.15s; white-space: nowrap; }
+  .vessel-chip:hover { border-color: var(--accent); color: var(--ink); }
+  .vessel-chip.selected { border-color: var(--accent2); background: #edf7f0; color: var(--accent2); font-weight: 500; }
+  .vessel-chip.none-chip { font-style: italic; }
+  .tare-note { font-size: 0.7rem; color: var(--accent2); margin-top: 4px; min-height: 1.2em; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Carb<span>Calc</span></h1>
-  <div class="step-bar">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <h1>Carb<span>Calc</span></h1>
+  </div>
+  <div class="step-bar" id="step-bar">
     <div class="step-dot" id="dot0"></div>
     <div class="step-dot" id="dot1"></div>
     <div class="step-dot" id="dot2"></div>
   </div>
 </header>
+<nav class="bottom-nav">
+  <button class="bnav-btn active" id="bnav-recipe" onclick="gotoRecipeFlow()">
+    <span class="bni">🥘</span>Resepti
+  </button>
+  <button class="bnav-btn" id="bnav-saved" onclick="showSavedScreen()">
+    <span class="bni">📋</span>Tallennetut
+  </button>
+</nav>
 
 <div id="scanner-overlay">
   <video id="scanner-video" autoplay playsinline muted></video>
@@ -254,15 +313,26 @@
     <div><div class="lbl" style="color:#7a6e62;margin-bottom:2px">Hiilihydraatit yhteensä</div></div>
     <div class="rt-val" id="running-carbs">0 <span>grammaa</span></div>
   </div>
+  <!-- Saved recipe chips -->
+  <div class="recipe-picker" id="recipe-picker" style="display:none">
+    <div class="lbl">Tallennetut reseptit</div>
+    <div class="recipe-picker-scroll" id="recipe-chips"></div>
+  </div>
   <div class="card">
     <div class="card-title">Reseptin ainesosat</div>
+    <!-- Scale buttons -->
+    <div class="scale-row" id="scale-row" style="display:none">
+      <button class="scale-btn" onclick="scaleIngredients(0.5)">½ annos</button>
+      <button class="scale-btn" onclick="scaleIngredients(2)">2× annos</button>
+    </div>
     <div class="ingredient-list" id="ingredient-list">
-      <p style="color:var(--muted);font-size:0.8rem;">No ingredients yet.</p>
+      <p style="color:var(--muted);font-size:0.8rem;">Ei ainesosia vielä.</p>
     </div>
     <button class="btn btn-ghost" id="add-more-btn" style="margin-top:4px">+ Lisää ainesosa</button>
   </div>
   <div class="nav-row">
-    <button class="btn btn-secondary" id="to-portion-btn">Laske annokset →</button>
+    <button class="btn btn-ghost" onclick="saveCurrentRecipe()" style="flex:0.6">💾 Tallenna</button>
+    <button class="btn btn-secondary" id="to-portion-btn" style="flex:1.4">Laske annokset →</button>
   </div>
 </div>
 
@@ -270,10 +340,22 @@
   <div class="card">
     <div class="card-title">Valmiin ruoan paino</div>
     <div class="card-sub">Punnitse koko ruoka kypsennyksen jälkeen - ota huomioon esim. vesi, kattilan paino...</div>
-    <div class="lbl">Ruoan kokonaispaino (g)</div>
+    <!-- Cooking vessel picker -->
+    <div class="vessel-section" id="vessel-cook-section" style="display:none">
+      <div class="lbl">Missä keitit? (vähentää taarapainon)</div>
+      <div class="vessel-chips" id="vessel-cook-chips"></div>
+      <div class="tare-note" id="cook-tare-note"></div>
+    </div>
+    <div class="lbl">Ruoan kokonaispaino (g) <span style="font-size:0.6rem;color:var(--muted);text-transform:none;letter-spacing:0">— astia mukaan lukien</span></div>
     <input type="number" id="dish-weight" placeholder="esim. 850" min="1" step="1">
-    <div class="lbl">Yhden annoksen paino (g)</div>
-    <input type="number" id="portion-weight" placeholder="esim. 280 - huomioi lautasen paino" min="1" step="1">
+    <!-- Eating vessel picker -->
+    <div class="vessel-section" id="vessel-eat-section" style="display:none">
+      <div class="lbl">Millä lautasella? (vähentää taarapainon)</div>
+      <div class="vessel-chips" id="vessel-eat-chips"></div>
+      <div class="tare-note" id="eat-tare-note"></div>
+    </div>
+    <div class="lbl">Yhden annoksen paino (g) <span style="font-size:0.6rem;color:var(--muted);text-transform:none;letter-spacing:0">— astia mukaan lukien</span></div>
+    <input type="number" id="portion-weight" placeholder="esim. 280" min="1" step="1">
     <button class="btn btn-primary mt" id="calc-btn">Laske →</button>
   </div>
   <div id="result-area" style="display:none">
@@ -290,6 +372,69 @@
   </div>
 </div>
 
+<!-- ── Saved items screen ── -->
+<div id="screen-saved" style="display:none;padding:20px 20px 80px;">
+
+  <!-- Reseptit -->
+  <div class="card">
+    <div class="section-title">
+      <span>Reseptit</span>
+      <button class="si-btn" onclick="toggleAddRecipeNameForm()">+ Tallenna uusi</button>
+    </div>
+    <div class="add-form" id="add-recipe-name-form">
+      <div class="lbl">Reseptin nimi</div>
+      <div class="add-form-row">
+        <input type="text" id="new-recipe-name" placeholder="esim. Tomaattikastike">
+        <button class="add-form-save" onclick="confirmSaveRecipe()">Tallenna</button>
+      </div>
+      <p class="hint" style="margin-top:6px">Tallentaa nykyiset ainesosat ja määrät mallipohjaksi.</p>
+    </div>
+    <div id="saved-recipes-list"><p class="empty-state">Ei tallennettuja reseptejä.</p></div>
+  </div>
+
+  <!-- Kattilat ja pannut -->
+  <div class="card">
+    <div class="section-title">
+      <span>🥘 Kattilat ja pannut</span>
+      <button class="si-btn" onclick="toggleAddVesselForm('cook')">+ Lisää</button>
+    </div>
+    <div class="add-form" id="add-vessel-cook-form">
+      <div class="add-form-row">
+        <input type="text" id="new-cook-name" placeholder="esim. Punainen kattila">
+        <input type="number" class="w120" id="new-cook-weight" placeholder="Paino (g)" min="1" step="1">
+        <button class="add-form-save" onclick="addVessel('cook')">Lisää</button>
+      </div>
+    </div>
+    <div id="saved-cook-list"><p class="empty-state">Ei tallennettuja astioita.</p></div>
+  </div>
+
+  <!-- Lautaset ja kulhot -->
+  <div class="card">
+    <div class="section-title">
+      <span>🍽 Lautaset ja kulhot</span>
+      <button class="si-btn" onclick="toggleAddVesselForm('eat')">+ Lisää</button>
+    </div>
+    <div class="add-form" id="add-vessel-eat-form">
+      <div class="add-form-row">
+        <input type="text" id="new-eat-name" placeholder="esim. Valkoinen lautanen">
+        <input type="number" class="w120" id="new-eat-weight" placeholder="Paino (g)" min="1" step="1">
+        <button class="add-form-save" onclick="addVessel('eat')">Lisää</button>
+      </div>
+    </div>
+    <div id="saved-eat-list"><p class="empty-state">Ei tallennettuja astioita.</p></div>
+  </div>
+
+  <!-- Export / import -->
+  <div class="card">
+    <div class="section-title"><span>Varmuuskopio</span></div>
+    <p class="hint" style="margin-bottom:12px">Lataa tiedot varmuuskopioksi tai palauta aiempi tallenne.</p>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="exportData()">⬇ Lataa</button>
+      <label class="btn btn-ghost" style="flex:1;text-align:center;cursor:pointer">⬆ Palauta<input type="file" accept=".json" style="display:none" onchange="importData(event)"></label>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
@@ -300,13 +445,40 @@ let scanStream  = null;
 let scanActive  = false;
 
 function showScreen(n) {
-  document.querySelectorAll('.screen').forEach((s,i) => s.classList.toggle('visible', i===n));
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
+  document.getElementById('screen-saved').style.display = 'none';
+  const screens = ['screen-0','screen-1','screen-2'];
+  const el = document.getElementById(screens[n]);
+  if (el) el.classList.add('visible');
+  document.getElementById('step-bar').style.display = 'flex';
   document.querySelectorAll('.step-dot').forEach((d,i) => {
     d.classList.toggle('active', i===n);
     d.classList.toggle('done',   i<n);
   });
+  document.getElementById('bnav-recipe').classList.add('active');
+  document.getElementById('bnav-saved').classList.remove('active');
+  if (n === 1) { renderRecipeChips(); renderScaleRow(); }
+  if (n === 2) { renderVesselPickers(); }
   window.scrollTo(0,0);
 }
+
+function showSavedScreen() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
+  document.getElementById('screen-saved').style.display = 'block';
+  document.getElementById('step-bar').style.display = 'none';
+  document.getElementById('bnav-saved').classList.add('active');
+  document.getElementById('bnav-recipe').classList.remove('active');
+  renderSavedScreen();
+  window.scrollTo(0,0);
+}
+
+function gotoRecipeFlow() {
+  document.getElementById('screen-saved').style.display = 'none';
+  showScreen(currentScreen >= 0 ? currentScreen : 0);
+}
+let currentScreen = 0;
+const _origShowScreen = showScreen;
+
 
 function setStatus(state, html) {
   const el = document.getElementById('status-pill');
@@ -339,6 +511,245 @@ function resetScanUI() {
   document.getElementById('search-panel').classList.remove('visible');
   document.getElementById('search-results').innerHTML     = '';
 }
+
+// ── localStorage data layer ───────────────────────────────────────────────
+function loadData() {
+  try {
+    return JSON.parse(localStorage.getItem('carbcalc_data') || '{}');
+  } catch(e) { return {}; }
+}
+function saveData(data) {
+  localStorage.setItem('carbcalc_data', JSON.stringify(data));
+}
+function getRecipes()  { return loadData().recipes  || []; }
+function getVessels(type) { return (loadData().vessels || []).filter(v => v.type === type); }
+
+function persistRecipes(recipes) {
+  const d = loadData(); d.recipes = recipes; saveData(d);
+}
+function persistVessels(vessels) {
+  const d = loadData(); d.vessels = vessels; saveData(d);
+}
+
+// ── Recipe save/load ──────────────────────────────────────────────────────
+function toggleAddRecipeNameForm() {
+  const f = document.getElementById('add-recipe-name-form');
+  f.classList.toggle('visible');
+  if (f.classList.contains('visible')) document.getElementById('new-recipe-name').focus();
+}
+
+function saveCurrentRecipe() {
+  if (!ingredients.length) { alert('Ei ainesosia tallennettavaksi.'); return; }
+  showSavedScreen();
+  toggleAddRecipeNameForm();
+  document.getElementById('new-recipe-name').focus();
+}
+
+function confirmSaveRecipe() {
+  const name = document.getElementById('new-recipe-name').value.trim();
+  if (!name) { alert('Anna reseptille nimi.'); return; }
+  if (!ingredients.length) { alert('Ei ainesosia tallennettavaksi. Rakenna ensin resepti.'); return; }
+  const recipes = getRecipes();
+  const existing = recipes.findIndex(r => r.nimi === name);
+  const recipe = { nimi: name, ainesosat: ingredients.map(i => ({...i})), tallennettu: new Date().toLocaleDateString('fi-FI') };
+  if (existing >= 0) {
+    if (!confirm('Korvataanko tallennettu resepti "' + name + '"?')) return;
+    recipes[existing] = recipe;
+  } else {
+    recipes.push(recipe);
+  }
+  persistRecipes(recipes);
+  document.getElementById('new-recipe-name').value = '';
+  document.getElementById('add-recipe-name-form').classList.remove('visible');
+  renderSavedScreen();
+  alert('✓ Resepti "' + name + '" tallennettu!');
+}
+
+function loadRecipe(idx) {
+  const recipe = getRecipes()[idx];
+  if (!recipe) return;
+  ingredients = recipe.ainesosat.map(i => ({...i}));
+  updateRecipe();
+  gotoRecipeFlow();
+  showScreen(1);
+  currentScreen = 1;
+}
+
+function deleteRecipe(idx) {
+  const recipes = getRecipes();
+  if (!confirm('Poistetaanko resepti "' + recipes[idx].nimi + '"?')) return;
+  recipes.splice(idx, 1);
+  persistRecipes(recipes);
+  renderSavedScreen();
+}
+
+// ── Vessel save/delete ────────────────────────────────────────────────────
+function toggleAddVesselForm(type) {
+  const f = document.getElementById('add-vessel-' + type + '-form');
+  f.classList.toggle('visible');
+}
+
+function addVessel(type) {
+  const nameEl   = document.getElementById('new-' + type + '-name');
+  const weightEl = document.getElementById('new-' + type + '-weight');
+  const name   = nameEl.value.trim();
+  const weight = parseFloat(weightEl.value);
+  if (!name || isNaN(weight) || weight <= 0) { alert('Syötä nimi ja paino.'); return; }
+  const vessels = loadData().vessels || [];
+  vessels.push({ type, nimi: name, paino: weight });
+  persistVessels(vessels);
+  nameEl.value = ''; weightEl.value = '';
+  document.getElementById('add-vessel-' + type + '-form').classList.remove('visible');
+  renderSavedScreen();
+}
+
+function deleteVessel(type, idx) {
+  const vessels = loadData().vessels || [];
+  const ofType  = vessels.filter(v => v.type === type);
+  const target  = ofType[idx];
+  if (!confirm('Poistetaanko "' + target.nimi + '"?')) return;
+  const globalIdx = vessels.indexOf(target);
+  vessels.splice(globalIdx, 1);
+  persistVessels(vessels);
+  renderSavedScreen();
+  renderVesselPickers();
+}
+
+// ── Render saved screen ───────────────────────────────────────────────────
+function renderSavedScreen() {
+  // Recipes
+  const recipes = getRecipes();
+  const rl = document.getElementById('saved-recipes-list');
+  rl.innerHTML = recipes.length ? recipes.map((r, i) =>
+    '<div class="saved-item">' +
+    '<div class="si-info"><div class="si-name">' + r.nimi + '</div>' +
+    '<div class="si-sub">' + r.ainesosat.length + ' ainesosaa · tallennettu ' + r.tallennettu + '</div></div>' +
+    '<div class="si-actions">' +
+    '<button class="si-btn" onclick="loadRecipe(' + i + ')">Lataa</button>' +
+    '<button class="si-btn del" onclick="deleteRecipe(' + i + ')">Poista</button>' +
+    '</div></div>'
+  ).join('') : '<p class="empty-state">Ei tallennettuja reseptejä.</p>';
+
+  // Cook vessels
+  const cook = getVessels('cook');
+  document.getElementById('saved-cook-list').innerHTML = cook.length ? cook.map((v, i) =>
+    '<div class="saved-item"><div class="si-info"><div class="si-name">' + v.nimi + '</div>' +
+    '<div class="si-sub">' + v.paino + ' g</div></div>' +
+    '<div class="si-actions"><button class="si-btn del" onclick="deleteVessel(\'cook\',' + i + ')">Poista</button></div></div>'
+  ).join('') : '<p class="empty-state">Ei tallennettuja astioita.</p>';
+
+  // Eat vessels
+  const eat = getVessels('eat');
+  document.getElementById('saved-eat-list').innerHTML = eat.length ? eat.map((v, i) =>
+    '<div class="saved-item"><div class="si-info"><div class="si-name">' + v.nimi + '</div>' +
+    '<div class="si-sub">' + v.paino + ' g</div></div>' +
+    '<div class="si-actions"><button class="si-btn del" onclick="deleteVessel(\'eat\',' + i + ')">Poista</button></div></div>'
+  ).join('') : '<p class="empty-state">Ei tallennettuja astioita.</p>';
+}
+
+// ── Recipe chips on screen-1 ──────────────────────────────────────────────
+function renderRecipeChips() {
+  const recipes = getRecipes();
+  const picker  = document.getElementById('recipe-picker');
+  const chips   = document.getElementById('recipe-chips');
+  if (!recipes.length) { picker.style.display = 'none'; return; }
+  picker.style.display = 'block';
+  chips.innerHTML = recipes.map((r, i) =>
+    '<button class="rp-chip" onclick="loadRecipe(' + i + ')">' + r.nimi + '</button>'
+  ).join('');
+}
+
+// ── Scale buttons ─────────────────────────────────────────────────────────
+function renderScaleRow() {
+  document.getElementById('scale-row').style.display = ingredients.length ? 'flex' : 'none';
+}
+
+function scaleIngredients(factor) {
+  ingredients = ingredients.map(i => {
+    const grams = Math.round(i.grams * factor);
+    return { ...i, grams, carbsTotal: (i.carbs100 * grams) / 100 };
+  });
+  updateRecipe();
+}
+
+// ── Vessel pickers on screen-2 ────────────────────────────────────────────
+let selectedCookVessel = null;
+let selectedEatVessel  = null;
+
+function renderVesselPickers() {
+  selectedCookVessel = null;
+  selectedEatVessel  = null;
+  document.getElementById('cook-tare-note').textContent = '';
+  document.getElementById('eat-tare-note').textContent  = '';
+
+  const cook = getVessels('cook');
+  const eat  = getVessels('eat');
+
+  const cookSec = document.getElementById('vessel-cook-section');
+  const eatSec  = document.getElementById('vessel-eat-section');
+
+  if (cook.length) {
+    cookSec.style.display = 'block';
+    document.getElementById('vessel-cook-chips').innerHTML =
+      '<button class="vessel-chip none-chip selected" id="cook-chip-none" onclick="selectVessel(\'cook\', null)">Ei astiaa</button>' +
+      cook.map((v, i) => '<button class="vessel-chip" id="cook-chip-' + i + '" onclick="selectVessel(\'cook\',' + i + ')">' + v.nimi + '</button>').join('');
+  } else { cookSec.style.display = 'none'; }
+
+  if (eat.length) {
+    eatSec.style.display = 'block';
+    document.getElementById('vessel-eat-chips').innerHTML =
+      '<button class="vessel-chip none-chip selected" id="eat-chip-none" onclick="selectVessel(\'eat\', null)">Ei astiaa</button>' +
+      eat.map((v, i) => '<button class="vessel-chip" id="eat-chip-' + i + '" onclick="selectVessel(\'eat\',' + i + ')">' + v.nimi + '</button>').join('');
+  } else { eatSec.style.display = 'none'; }
+}
+
+function selectVessel(type, idx) {
+  const vessels = getVessels(type);
+  const prefix  = type === 'cook' ? 'cook' : 'eat';
+
+  // Deselect all chips
+  document.querySelectorAll('[id^="' + prefix + '-chip-"]').forEach(c => c.classList.remove('selected'));
+
+  if (idx === null) {
+    document.getElementById(prefix + '-chip-none').classList.add('selected');
+    if (type === 'cook') { selectedCookVessel = null; document.getElementById('cook-tare-note').textContent = ''; }
+    else                 { selectedEatVessel  = null; document.getElementById('eat-tare-note').textContent  = ''; }
+  } else {
+    document.getElementById(prefix + '-chip-' + idx).classList.add('selected');
+    const v = vessels[idx];
+    if (type === 'cook') { selectedCookVessel = v; document.getElementById('cook-tare-note').textContent = '− ' + v.paino + 'g taarapaino vähennetään automaattisesti'; }
+    else                 { selectedEatVessel  = v; document.getElementById('eat-tare-note').textContent  = '− ' + v.paino + 'g taarapaino vähennetään automaattisesti'; }
+  }
+}
+
+// ── Export / import ───────────────────────────────────────────────────────
+function exportData() {
+  const data = loadData();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'carbcalc-varmuuskopio-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!confirm('Korvataanko kaikki tallennetut tiedot palautetulla varmuuskopiolla?')) return;
+      saveData(data);
+      renderSavedScreen();
+      alert('✓ Tiedot palautettu!');
+    } catch(err) { alert('Virheellinen tiedosto.'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+
 
 async function lookupOFF(barcode) {
   const resp = await fetch('https://world.openfoodfacts.org/api/v0/product/' + barcode + '.json');
@@ -546,11 +957,6 @@ const FINELI_DB = {
   ],
 };
 
-// Flat list for search (with category tag added)
-const FINELI_FLAT = Object.entries(FINELI_DB).flatMap(([cat, items]) =>
-  items.map(item => ({ ...item, kategoria: cat }))
-);
-
 // ── Fineli search UI ──────────────────────────────────────────────────────
 document.getElementById('search-btn').addEventListener('click', () => {
   resetScanUI();
@@ -747,12 +1153,13 @@ document.getElementById('ocr-file-input').addEventListener('change', async (e) =
 });
 
 document.getElementById('add-btn').addEventListener('click', () => {
-  const name     = document.getElementById('ing-name').value.trim() || 'Ingredient';
+  const name     = document.getElementById('ing-name').value.trim() || 'Ainesosa';
   const carbs100 = parseFloat(document.getElementById('carbs-per-100').value);
   const grams    = parseFloat(document.getElementById('grams-used').value);
   if (isNaN(carbs100)||isNaN(grams)) { alert('Syötä hiilihydraatit per 100g ja käytetty määrä.'); return; }
   ingredients.push({ name, carbs100, grams, carbsTotal: (carbs100*grams)/100 });
   updateRecipe();
+  currentScreen = 1;
   showScreen(1);
   document.getElementById('ing-name').value = '';
   document.getElementById('carbs-per-100').value = '';
@@ -772,50 +1179,74 @@ function updateRecipe() {
         '<div class="ing-total">' + ing.carbsTotal.toFixed(1) + 'g</div>' +
         '<button class="del-btn" onclick="removeIng(' + idx + ')">✕</button>' +
         '</div>').join('')
-    : '<p style="color:var(--muted);font-size:0.8rem;">No ingredients yet.</p>';
+    : '<p style="color:var(--muted);font-size:0.8rem;">Ei ainesosia vielä.</p>';
+  renderScaleRow();
 }
 
 function removeIng(idx) { ingredients.splice(idx,1); updateRecipe(); }
 
-document.getElementById('add-more-btn').addEventListener('click', () => showScreen(0));
+document.getElementById('add-more-btn').addEventListener('click', () => { currentScreen = 0; showScreen(0); });
 document.getElementById('to-portion-btn').addEventListener('click', () => {
   if (!ingredients.length) { alert('Lisää ensin ainakin yksi ainesosa.'); return; }
-  // Prefill dish weight with total grams added
   const totalGrams = ingredients.reduce((s, i) => s + i.grams, 0);
   const dishWeightEl = document.getElementById('dish-weight');
   if (totalGrams > 0) dishWeightEl.value = totalGrams;
+  currentScreen = 2;
   showScreen(2);
 });
 document.getElementById('calc-btn').addEventListener('click', () => {
-  const dw = parseFloat(document.getElementById('dish-weight').value);
-  const pw = parseFloat(document.getElementById('portion-weight').value);
-  const tc = ingredients.reduce((s,i)=>s+i.carbsTotal,0);
-  if (isNaN(dw)||isNaN(pw)) { alert('Syötä ruoan paino ja annoksen paino.'); return; }
-  if (pw>dw) { alert('Annoksen paino ei voi ylittää ruoan kokonaispainoa.'); return; }
+  const rawDw = parseFloat(document.getElementById('dish-weight').value);
+  const rawPw = parseFloat(document.getElementById('portion-weight').value);
+  if (isNaN(rawDw)||isNaN(rawPw)) { alert('Syötä ruoan paino ja annoksen paino.'); return; }
+
+  // Apply tare deductions from selected vessels
+  const cookTare = selectedCookVessel ? selectedCookVessel.paino : 0;
+  const eatTare  = selectedEatVessel  ? selectedEatVessel.paino  : 0;
+  const dw = rawDw - cookTare;
+  const pw = rawPw - eatTare;
+
+  if (dw <= 0) { alert('Ruoan paino taaravähennyksen jälkeen on ' + dw + 'g — tarkista astian paino tai syötetty arvo.'); return; }
+  if (pw <= 0) { alert('Annoksen paino taaravähennyksen jälkeen on ' + pw + 'g — tarkista lautasen paino tai syötetty arvo.'); return; }
+  if (pw > dw) { alert('Annoksen paino ei voi ylittää ruoan kokonaispainoa.'); return; }
+
+  const tc   = ingredients.reduce((s,i)=>s+i.carbsTotal,0);
   const cp   = (tc/dw)*pw;
   const c100 = (tc/dw)*100;
   document.getElementById('result-num').textContent = cp.toFixed(1);
-  document.getElementById('breakdown').innerHTML = [
-    ['Reseptin hiilihydraatit yhteensä',     tc.toFixed(1) + ' g'],
-    ['Ruoan paino',            dw + ' g'],
-    ['Hiilihydraatit / 100g ruokaa', c100.toFixed(1) + ' g'],
-    ['Annoksen paino',         pw + ' g'],
-    ['Hiilihydraatit annoksessa',       cp.toFixed(1) + ' g'],
-  ].map(function(r){ return '<div class="bdr"><span class="k">'+r[0]+'</span><span>'+r[1]+'</span></div>'; }).join('');
+
+  const rows = [
+    ['Reseptin hiilihydraatit yhteensä', tc.toFixed(1) + ' g'],
+    ['Punnittu ruoka + astia',           rawDw + ' g'],
+  ];
+  if (cookTare) rows.push(['Kattilan/pannun taarapaino', '− ' + cookTare + ' g']);
+  rows.push(['Ruoan nettopaino', dw.toFixed(0) + ' g']);
+  rows.push(['Hiilihydraatit / 100g ruokaa', c100.toFixed(1) + ' g']);
+  rows.push(['Punnittu annos + astia', rawPw + ' g']);
+  if (eatTare) rows.push(['Lautasen taarapaino', '− ' + eatTare + ' g']);
+  rows.push(['Annoksen nettopaino', pw.toFixed(0) + ' g']);
+  rows.push(['Hiilihydraatit annoksessa', cp.toFixed(1) + ' g']);
+
+  document.getElementById('breakdown').innerHTML = rows
+    .map(function(r){ return '<div class="bdr"><span class="k">'+r[0]+'</span><span>'+r[1]+'</span></div>'; }).join('');
   document.getElementById('result-area').style.display = 'block';
   document.getElementById('result-area').scrollIntoView({behavior:'smooth'});
 });
-document.getElementById('back-btn').addEventListener('click', () => showScreen(1));
+document.getElementById('back-btn').addEventListener('click', () => { currentScreen = 1; showScreen(1); });
 document.getElementById('new-recipe-btn').addEventListener('click', () => {
   ingredients = [];
   updateRecipe();
   document.getElementById('dish-weight').value = '';
   document.getElementById('portion-weight').value = '';
   document.getElementById('result-area').style.display = 'none';
+  selectedCookVessel = null;
+  selectedEatVessel  = null;
+  currentScreen = 0;
   showScreen(0);
 });
 
+currentScreen = 0;
 showScreen(0);
+
 
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {
